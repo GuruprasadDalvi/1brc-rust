@@ -1,65 +1,68 @@
-use std::fs;
-use std::time::Instant;
 use std::collections::HashMap;
-struct CityResult<'a>{
-    name: &'a str,
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+use std::time::Instant;
+struct CityData {
     min: f64,
     max: f64,
-    avg: f64,
+    sum: f64,
+    count: u32,
 }
-fn main(){
+fn main() {
     let file_path = "weather_stations.csv";
+    let separator = ";";
+    let file = File::open(file_path);
+    let reader = BufReader::new(file.unwrap());
     let start = Instant::now();
     println!("Starting the calculation");
-    let mut city_map: HashMap<String, Vec<f64>> = HashMap::new();
+    let mut city_map = HashMap::new();
+    let mut city_vec: Vec<String> = Vec::new();
 
-    //Parsing Cities and storing data in hashmap of city name as key, and vector of temperature as value;
-    for line in fs::read_to_string(file_path).unwrap().lines() {
-        let city: String = line.split(";").nth(0).unwrap().to_string();
-        let temp: f64 = line.split(";").nth(1).unwrap().parse().unwrap();
+    let lines = reader.lines();
+
+    //Parsing Cities and storing data in hashmap of city name as key, and cityData struct as value
+    for line in lines {
+        let line_val = line.unwrap();
+
+        //Calculating Min an max
+        let splitted_line: (&str, &str) = line_val.split_once(separator).unwrap();
+        let city: String = splitted_line.0.to_string();
+        let temp: f64 = splitted_line.1.parse().unwrap();
+
         if !city_map.contains_key(&city) {
-            city_map.insert(city.clone(), Vec::new());
+            city_map.insert(
+                city.clone(),
+                CityData {
+                    min: f64::MAX,
+                    max: f64::MIN,
+                    sum: 0.0,
+                    count: 0,
+                },
+            );
+            city_vec.push(city.clone());
         }
-        city_map.get_mut(&city).unwrap().push(temp);
+        let current_city = city_map.get_mut(&city).unwrap();
+        current_city.min = current_city.min.min(temp);
+        current_city.max = current_city.max.max(temp);
+
+        //Storing sum and count for average
+        current_city.sum += temp;
+        current_city.count += 1;
     }
 
-    //Calculating min max and average for each city
-    let mut city_data: Vec<CityResult> = Vec::new();
-    city_map.keys().for_each(|f| {
-        let v: &Vec<f64> = city_map.get(f).unwrap();
-        let mut min = 999.00;
-        let mut max = -999.00;
-        let mut c = 0.0;
-        let mut s = 0.0;
-        v.iter().for_each(|t|{
-            if *t<min {
-                min=*t;
-            }
-            if *t>max{
-                max=*t;
-            }
-            c+=1.0;
-            s+=t;
-        });
-        let data: CityResult = CityResult{
-            name: f,
-            min: min,
-            max: max,
-            avg: s/c,
-        };
-        city_data.push(data);
-
-    });
-
-    //Sort Cities by name
-    city_data.sort_by(|a,b|a.name.to_lowercase().cmp(&b.name.to_lowercase()));
-
-
+    city_vec.sort_unstable_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
     //Print Cities
-    city_data.iter().for_each(|f|{
-        println!("city: {} min: {} max: {} avg: {} ",f.name,f.min,f.max,f.avg);
+    city_vec.iter().for_each(|f| {
+        let city_data = city_map.get(f).unwrap();
+        println!(
+            "city: {} min: {} max: {} avg: {} ",
+            f,
+            city_data.min,
+            city_data.max,
+            city_data.sum / (city_data.count as f64)
+        );
     });
-    
+
     let duration = start.elapsed();
 
     //print duration in min:sec:ms
@@ -68,6 +71,8 @@ fn main(){
     let total_seconds = total_milliseconds / 1000;
     let seconds = total_seconds % 60;
     let minutes = total_seconds / 60;
-    println!("Time elapsed in running the program is: {}:{}:{}",minutes,seconds,milliseconds);
-    
+    println!(
+        "Time elapsed in running the program is: {}:{}:{}",
+        minutes, seconds, milliseconds
+    );
 }
