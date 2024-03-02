@@ -20,6 +20,7 @@ fn main() {
 
     let lines = reader.lines();
 
+    
     //Parsing Cities and storing data in hashmap of city name as key, and cityData struct as value
     for line in lines {
         let line_val = line.unwrap();
@@ -49,6 +50,8 @@ fn main() {
         current_city.sum += temp;
         current_city.count += 1;
     }
+
+
 
     city_vec.sort_unstable_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
     //Print Cities
