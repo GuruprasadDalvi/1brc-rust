@@ -1,7 +1,8 @@
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::time::Instant;
+use hashbrown::HashMap;
+
 struct CityData {
     min: f64,
     max: f64,
@@ -28,21 +29,17 @@ fn main() {
         //Calculating Min an max
         let splitted_line: (&str, &str) = line_val.split_once(separator).unwrap();
         let city: String = splitted_line.0.to_string();
-        let temp: f64 = splitted_line.1.parse().unwrap();
+        let temp: f64 = splitted_line.1.parse::<f64>().unwrap();
 
-        if !city_map.contains_key(&city) {
-            city_map.insert(
-                city.clone(),
-                CityData {
-                    min: f64::MAX,
-                    max: f64::MIN,
-                    sum: 0.0,
-                    count: 0,
-                },
-            );
-            city_vec.push(city.clone());
-        }
-        let current_city = city_map.get_mut(&city).unwrap();
+        let current_city = city_map.entry(city.clone()).or_insert_with(||{
+            city_vec.push(city.clone()); // push only on first insertion
+            CityData {
+                min: f64::MAX,
+                max: f64::MIN,
+                sum: 0.0,
+                count: 0,
+            }
+        });
         current_city.min = current_city.min.min(temp);
         current_city.max = current_city.max.max(temp);
 
